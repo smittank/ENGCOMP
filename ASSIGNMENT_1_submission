@@ -1,3 +1,9 @@
+/*
+Name: Smit Prashant Tanksale 
+Student number: 1047768
+C programming is fun
+*/
+
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
@@ -8,164 +14,116 @@
 #define TOTAL_RECORDS 99
 #define MAX_distance 0.002
 #define MIN_time 900
+#define HAVERSINE_CONSTANT 6371
 
 //defining all the functions --------------------
 double dist(double lat1, double long1, double lat2, double long2);
 
 double toRadian(double angle);
 
-int time_diff(int start_time_1, int end_time_1, int start_time_2, 
-              int end_time_2);
+int time_diff(int start_time_1, int end_time_1, int start_time_2,
+	int end_time_2);
 
 int read_record(double* lat_dest, double* long_dest, double* lat_home,
 	double* long_home, int* start_time, int* end_time, char* id);
 
-void print_stage1(double lat_dest, double long_dest, int start_time, 
-                  int end_time, char* id, double distance);
+void print_stage1(double lat_dest, double long_dest, int start_time,
+	int end_time, char* id, double distance);
 
-void print_representation(char* id, double distance);
+void print_representation(char* id, double distance);	
+
+int print_stage2(char ID_list[TOTAL_RECORDS][IDLENGTH + 1], double* lat_list,
+                double* long_list, int* ST_list, int* ET_list, double distance);
+
+void Stage3(int position, double* lat_list, double* long_list, int* ST_list, 
+            int* ET_list, char ID_list[TOTAL_RECORDS][IDLENGTH + 1]);
+
+void print_stage3(int close_contact_pairs, int highest_time, 
+                  char ID_list[TOTAL_RECORDS][IDLENGTH + 1], 
+                  int* current_highest, double* lat_list, double* long_list);
+
 //End of Definitions --------------------
 
 int main(int argc, char* argv[]) {
 
-	double long_home, lat_home, distance, lat_list[TOTAL_RECORDS], 
-    long_list[TOTAL_RECORDS];
+	double long_home, lat_home, distance, lat_list[TOTAL_RECORDS],
+		long_list[TOTAL_RECORDS];
 
-
-	int i, j, close_contact_pairs = 0, position = 0, time, highest_time = 0;
-	int ST_list[TOTAL_RECORDS], ET_list[TOTAL_RECORDS], current_highest[2];
+	int position = 0;
+	int ST_list[TOTAL_RECORDS], ET_list[TOTAL_RECORDS];
 
 	char ID_list[TOTAL_RECORDS][IDLENGTH + 1];
 
-	
-    // Stage 1 ---------------
 
-	assert(read_record(lat_list, long_list, &lat_home, &long_home, ST_list, 
-                       ET_list, *ID_list));
-	distance = dist(lat_list[position], long_list[position], lat_home, 
-                    long_home);
-	print_stage1(lat_list[0], long_list[0], ST_list[0], ET_list[0], ID_list[0], 
-                 distance);
+	assert(read_record(lat_list, long_list, &lat_home, &long_home, ST_list,
+		ET_list, *ID_list));
+	distance = dist(lat_list[position], long_list[position], lat_home,
+		long_home);
+	print_stage1(lat_list[0], long_list[0], ST_list[0], ET_list[0], ID_list[0],
+		distance);
 
-	// End of stage 1 --------
+	position = print_stage2(ID_list, lat_list, long_list, ST_list, ET_list, 
+                            distance);
 
-
-	// Stage 2 ---------------
-	printf("\nStage 2\n");
-	printf("==========\n");
-
-	print_representation(ID_list[position], distance);
-	position++;
-	while (read_record(lat_list + position, long_list + position, &lat_home,
-		&long_home, ST_list + position, ET_list + position, ID_list[position])){
-
-		distance = dist(lat_list[position], long_list[position], lat_home, 
-                        long_home);
-		print_representation(ID_list[position], distance);
-		position++;
-	}
-
-	//End of Stage 2 ------------------
-
-
-	//Stage 3 ------------------
-	printf("\nStage 3\n");
-	printf("==========\n");
-
-
-	for (i = 0; i < position; i++) {
-		for (j = i + 1; j < position; j++) {
-			distance = dist(lat_list[i], long_list[i], lat_list[j], 
-                            long_list[j]);
-			time = time_diff(ST_list[i], ET_list[i], ST_list[j], ET_list[j]);
-
-
-			if (distance < MAX_distance && time > MIN_time && 
-                ID_list[i] != ID_list[j]) {
-
-				close_contact_pairs++;
-				if (close_contact_pairs > 1) {
-					if (highest_time > time) {
-						continue;
-
-					}
-					else if (highest_time < time) {
-						highest_time = time;
-						current_highest[0] = i;
-						current_highest[1] = j;
-					}
-
-				}
-				else {
-					current_highest[0] = i;
-					current_highest[1] = j;
-					highest_time = time;
-
-				}
-
-			}
-		}
-	}
-
-	printf("Number of close-contact pairs: %d\n", close_contact_pairs);
-	printf("Longest overlap time: %05d seconds\n", highest_time);
-	printf("#%s @ <%f, %f>\n", ID_list[current_highest[0]], 
-           lat_list[current_highest[0]], long_list[current_highest[0]]);
-	printf("#%s @ <%f, %f>\n", ID_list[current_highest[1]], 
-           lat_list[current_highest[1]], long_list[current_highest[1]]);
-
-	//End of Stage 3 
+	Stage3(position, lat_list, long_list, ST_list, ET_list, ID_list);
 }
-
+/*read_record takes reads from the stdin
+*/
 int read_record(double* lat_dest, double* long_dest, double* lat_home,
 	double* long_home, int* start_time, int* end_time, char* id) {
 	int result = (scanf("%lf %lf %lf %lf %d %d %s", lat_dest, long_dest,
-                        lat_home, long_home, start_time, end_time, id) == 7);
+		lat_home, long_home, start_time, end_time, id) == 7);
 	getchar();
 	return result;
 }
 
+/* Calculates the distance between the 2 points (home and destination
+defined by their latitudes and logitudes respectively
+*/
 double dist(double lat1, double long1, double lat2, double long2) {
 	double chord_length, angle_distance, distance;
 
-	chord_length = (sin(toRadian(lat2 - lat1) / 2) * 
-                    sin(toRadian(lat2 - lat1) / 2)) +
-		cos(toRadian(lat1)) * cos(toRadian(lat2)) * 
-        ((sin(toRadian(long2 - long1) / 2.0)) * 
-         (sin(toRadian(long2 - long1) / 2.0)));
+	chord_length = (sin(toRadian(lat2 - lat1) / 2) *
+		sin(toRadian(lat2 - lat1) / 2)) +
+		cos(toRadian(lat1)) * cos(toRadian(lat2)) *
+		((sin(toRadian(long2 - long1) / 2.0)) *
+			(sin(toRadian(long2 - long1) / 2.0)));
 
 	angle_distance = 2 * atan2(sqrt(chord_length), sqrt(1 - chord_length));
 
-	distance = 6371 * angle_distance;
+	distance = HAVERSINE_CONSTANT * angle_distance;
 
 	return distance;
 }
 
+/*Converts the angle to Radians */
 double toRadian(double angle) {
 	double y;
 	y = angle * (PI / 180);
 	return y;
 }
 
-int time_diff(int start_time_1, int end_time_1, int start_time_2, 
-              int end_time_2){
-	
+/* Calculates the overlap time between each users visit times */
+
+int time_diff(int start_time_1, int end_time_1, int start_time_2,
+	int end_time_2) {
+
 	int diff;
 
-	if (start_time_1 <= start_time_2 && start_time_2 <= end_time_1 && 
-        end_time_2 >= end_time_1){
+	if (start_time_1 <= start_time_2 && start_time_2 <= end_time_1 &&
+		end_time_2 >= end_time_1) {
 		diff = end_time_1 - start_time_2;
 	}
-	else if(start_time_2 <= start_time_1 && start_time_1 <= end_time_2 && 
-            end_time_2 >= end_time_1){
+	else if (start_time_2 <= start_time_1 && start_time_1 <= end_time_2 &&
+		end_time_2 >= end_time_1) {
 		diff = end_time_1 - start_time_1;
 	}
-	else if(start_time_1 <= start_time_2 && start_time_2 <= end_time_1 && 
-            end_time_2 <= end_time_1) {
+	else if (start_time_1 <= start_time_2 && start_time_2 <= end_time_1 &&
+		end_time_2 <= end_time_1) {
 		diff = end_time_2 - start_time_2;
 	}
-	else if (start_time_2 <= start_time_1 && start_time_1 <= end_time_2 && 
-             end_time_2 <= end_time_1) {
+	else if (start_time_2 <= start_time_1 && start_time_1 <= end_time_2 &&
+		end_time_2 <= end_time_1) {
 		diff = end_time_2 - start_time_1;
 	}
 	else {
@@ -174,8 +132,9 @@ int time_diff(int start_time_1, int end_time_1, int start_time_2,
 	return diff;
 }
 
-void print_stage1(double lat_dest, double long_dest, int start_time, 
-                  int end_time, char* id, double distance) {
+/* Prints the output for stage 1 */
+void print_stage1(double lat_dest, double long_dest, int start_time,
+	int end_time, char* id, double distance) {
 	printf("Stage 1\n");
 	printf("==========\n");
 	printf("User: #%s\n", id);
@@ -185,13 +144,14 @@ void print_stage1(double lat_dest, double long_dest, int start_time,
 	printf("Distance from home: %05.2f km\n", distance);
 }
 
+/* Prints the visual representation for each distance */
 void print_representation(char* id, double distance) {
 
 	int i;
 
 	printf("#%s, distance from home: %05.2f |", id, distance);
 	for (i = 1; i < (distance + 1); i++) {
-		if (i % 5 == 0 && i > 0) {
+		if (i % 5 == 0 && i > 0) {  //check remainder after dividing with 5
 			printf("+");
 		}
 		else {
@@ -199,4 +159,74 @@ void print_representation(char* id, double distance) {
 		}
 	}
 	printf("\n");
+}
+
+/* Print the output for stage 2 */
+int print_stage2(char ID_list[TOTAL_RECORDS][IDLENGTH + 1], double* lat_list, 
+                 double* long_list, int* ST_list, 
+                 int* ET_list, double distance) {
+	
+    printf("\nStage 2\n");
+	printf("==========\n");
+
+	double lat_home, long_home;
+	int position = 0;
+
+	print_representation(ID_list[position], distance);
+	position++;
+	while (read_record(lat_list + position, long_list + position, &lat_home,
+		&long_home, ST_list + position, ET_list + position, ID_list[position])){
+
+		distance = dist(lat_list[position], long_list[position], lat_home,
+			long_home);
+		print_representation(ID_list[position], distance);
+		position++;
+	}
+	return position;
+}
+
+/* Holds the value of the position of the highest overlap time pair */
+void Stage3(int position, double* lat_list, double* long_list, int* ST_list, 
+            int* ET_list, char ID_list[TOTAL_RECORDS][IDLENGTH + 1]) {
+	
+    int i, j, current_highest[2], time, highest_time = -1, 
+    close_contact_pairs = 0;
+	double distance;
+    
+	for (i = 0; i < position; i++) {
+		for (j = i + 1; j < position; j++) {
+			distance = dist(lat_list[i], long_list[i], lat_list[j],
+				long_list[j]);
+			time = time_diff(ST_list[i], ET_list[i], ST_list[j], ET_list[j]);
+
+			if (distance < MAX_distance && time > MIN_time &&
+				strcmp(ID_list[i], ID_list[j])) {
+
+				close_contact_pairs++;
+
+				if (highest_time < time) {
+					highest_time = time;
+					current_highest[0] = i;
+					current_highest[1] = j;
+				}
+			}
+		}
+	}
+	print_stage3(close_contact_pairs, highest_time, ID_list, current_highest, 
+                 lat_list, long_list);
+}
+
+/* Prints the output for stage 3 */
+void print_stage3(int close_contact_pairs, int highest_time, 
+                  char ID_list[TOTAL_RECORDS][IDLENGTH + 1], 
+                  int* current_highest, double* lat_list, double* long_list) {
+	printf("\nStage 3\n");
+	printf("==========\n");
+
+	printf("Number of close-contact pairs: %d\n", close_contact_pairs);
+	printf("Longest overlap time: %05d seconds\n", highest_time);
+	printf("#%s @ <%f, %f>\n", ID_list[current_highest[0]],
+		lat_list[current_highest[0]], long_list[current_highest[0]]);
+	printf("#%s @ <%f, %f>\n", ID_list[current_highest[1]],
+		lat_list[current_highest[1]], long_list[current_highest[1]]);
 }
